@@ -1,42 +1,106 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+:root {
+  --bg:  #ffffff;             /* page background under video */
+  --fg: #0b0b0c;
+  --muted: #c8c8c8;
+  --ring: #2bb6ff;
+
+  /* glassy button look */
+  --btn-bg: rgba(255,255,255,0.16);
+  --btn-bg-hover: rgba(255,255,255,0.24);
+  --btn-border: rgba(255,255,255,0.28);
+  --shadow: 0 10px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* ===== Header layout (responsive, perfectly centered circles) ===== */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+   display: grid;
+  grid-template-columns: minmax(100px, 1fr) 1200px minmax(100px, 1fr);
+  align-items: center;
+  padding: 30px 20px 0 20px;
+  backdrop-filter: blur(8px);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.topbar-left   { justify-self: start; }
+.topbar-center { justify-self: center; display: flex; gap: 14px; }
+.topbar-right  { justify-self: end; display: flex; align-items: center; gap: 10px; }
+
+/* brand + user styling */
+.brand-name { font-weight: 600; font-size: 1.1rem; }
+.user-name  { font-weight: 500; opacity: 0.95; }
+
+/* ===== Circular buttons (bigger + glassy background) ===== */
+.circle-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+   box-sizing: border-box;   /* avoid border adding weirdness */
+  padding: 0;
+  display: grid;
+  place-items: center;
+
+  /* make the “black” look go away: add glass bg + border */
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  box-shadow: var(--shadow);
+  color: #8A2BE2;   /* if your icons use currentColor */
+
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.circle-btn svg {
+  display: block;
+  margin: 0;               /* kill inline gaps */
+  width: 60%;
+  height: 60%;
+  transform-box: fill-box; /* use the SVG’s drawing box */
+  transform-origin: center;/* math center, not page center */
 }
 
-.card {
-  padding: 2em;
+.circle-btn:hover {
+  transform: scale(1.12) translateY(-2px);
+  background: var(--btn-bg-hover);
 }
 
-.read-the-docs {
-  color: #888;
+.circle-btn:active {
+  transform: scale(0.96);
+}
+
+/* Let the Lottie wrapper scale with the button */
+.circle-btn > div {
+  width: 60%;
+  height: 60%;
+  transition: transform 0.2s ease;
+}
+
+/* Optional: make the icon “pulse” a bit more than the button */
+.circle-btn:hover > div { transform: scale(1.2); }
+
+/* ===== Background video ===== */
+.bg-video {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.35;
+  filter: saturate(110%) contrast(105%);
+}
+
+/* ===== Small screens: keep layout tidy ===== */
+@media (max-width: 768px) {
+  .topbar { padding: 10px 16px; }
+  .circle-btn { width: 48px; height: 48px; }
+  .circle-btn > div { width: 62%; height: 62%; }
 }
