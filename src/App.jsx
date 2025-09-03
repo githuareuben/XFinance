@@ -78,7 +78,7 @@ export default function App() {
                 {/* 2/3 — your image (old man on stool) */}
                 <figure className="home-figure">
                   <img
-                    src="/old-man-stool.png"
+                    src="/logo.png"
                     alt="Old man sitting on a three-legged stool with wings"
                     className="home-figure-img"
                   />
