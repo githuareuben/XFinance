@@ -1,4 +1,3 @@
-// src/components/LottieIcon.jsx
 import { useRef, useEffect } from "react";
 import Lottie from "lottie-react";
 
@@ -22,7 +21,6 @@ export default function LottieIcon({
       style={{ width: size, height: size, lineHeight: 0 }}
       onMouseEnter={() => hoverPlay && lottieRef.current?.play()}
       onMouseLeave={() => hoverPlay && lottieRef.current?.stop()}
-      // optional: improve focus behavior for keyboard
       onFocus={() => hoverPlay && lottieRef.current?.play()}
       onBlur={() => hoverPlay && lottieRef.current?.stop()}
     >

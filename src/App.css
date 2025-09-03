@@ -1,5 +1,8 @@
+/* Decorative quote font */
+@import url('https://fonts.googleapis.com/css2?family=Mrs+Saint+Delafield&display=swap');
+
 :root {
-  --bg:  #ffffff;             /* page background under video */
+  --bg: #ffffff;
   --fg: #0b0b0c;
   --muted: #c8c8c8;
   --ring: #2bb6ff;
@@ -12,78 +15,52 @@
 }
 
 html, body, #root { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial; }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
-}
-
-/* ===== Header layout (responsive, perfectly centered circles) ===== */
+/* ===== Top bar: left | center | right ===== */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 20;
-   display: grid;
-  grid-template-columns: minmax(100px, 1fr) 1200px minmax(100px, 1fr);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* center intrinsic width */
   align-items: center;
-  padding: 30px 20px 0 20px;
+  padding: 20px 24px 0 24px;
   backdrop-filter: blur(8px);
 }
-
 .topbar-left   { justify-self: start; }
 .topbar-center { justify-self: center; display: flex; gap: 14px; }
 .topbar-right  { justify-self: end; display: flex; align-items: center; gap: 10px; }
 
-/* brand + user styling */
 .brand-name { font-weight: 600; font-size: 1.1rem; }
 .user-name  { font-weight: 500; opacity: 0.95; }
 
-/* ===== Circular buttons (bigger + glassy background) ===== */
+/* ===== Circular buttons (glassy) ===== */
 .circle-btn {
   width: 56px;
   height: 56px;
   border-radius: 9999px;
-   box-sizing: border-box;   /* avoid border adding weirdness */
+  box-sizing: border-box;
   padding: 0;
   display: grid;
   place-items: center;
-
-  /* make the “black” look go away: add glass bg + border */
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);
   box-shadow: var(--shadow);
-  color: #8A2BE2;   /* if your icons use currentColor */
-
+  color: #8A2BE2;
   transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .circle-btn svg {
   display: block;
-  margin: 0;               /* kill inline gaps */
+  margin: 0;
   width: 60%;
   height: 60%;
-  transform-box: fill-box; /* use the SVG’s drawing box */
-  transform-origin: center;/* math center, not page center */
+  transform-box: fill-box;
+  transform-origin: center;
 }
-
-.circle-btn:hover {
-  transform: scale(1.12) translateY(-2px);
-  background: var(--btn-bg-hover);
-}
-
-.circle-btn:active {
-  transform: scale(0.96);
-}
-
-/* Let the Lottie wrapper scale with the button */
-.circle-btn > div {
-  width: 60%;
-  height: 60%;
-  transition: transform 0.2s ease;
-}
-
-/* Optional: make the icon “pulse” a bit more than the button */
+.circle-btn:hover { transform: scale(1.12) translateY(-2px); background: var(--btn-bg-hover); }
+.circle-btn:active { transform: scale(0.96); }
+.circle-btn > div { width: 60%; height: 60%; transition: transform 0.2s ease; }
 .circle-btn:hover > div { transform: scale(1.2); }
 
 /* ===== Background video ===== */
@@ -91,16 +68,79 @@ body {
   position: fixed;
   inset: 0;
   z-index: -1;
-  width: 100%;
-  height: 100%;
+  width: 100%; height: 100%;
   object-fit: cover;
   opacity: 0.35;
   filter: saturate(110%) contrast(105%);
 }
 
-/* ===== Small screens: keep layout tidy ===== */
-@media (max-width: 768px) {
-  .topbar { padding: 10px 16px; }
-  .circle-btn { width: 48px; height: 48px; }
-  .circle-btn > div { width: 62%; height: 62%; }
+/* ===== Home hero: quote 1/3, image 2/3 ===== */
+.home-hero {
+  position: relative;
+  min-height: calc(100vh - 90px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
 }
+.home-overlay { position: relative; z-index: 1; width: min(1200px, 92vw); }
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr; /* 1/3 : 2/3 */
+  gap: clamp(16px, 4vw, 40px);
+  align-items: center;
+}
+.jung-quote {
+  margin: 0;
+  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 18px;
+  padding: clamp(14px, 2.5vw, 22px);
+  box-shadow: var(--shadow);
+}
+.jung-quote-text {
+  font-family: "Mrs Saint Delafield", cursive;
+  font-size: clamp(40px, 9vw, 120px);
+  line-height: 0.95;
+  color: #0b0b0c;
+  display: inline-block;
+  letter-spacing: 0.5px;
+}
+.jung-quote .quote-mark { font-size: 1.0em; vertical-align: -0.05em; opacity: 0.95; }
+.jung-quote-author { margin-top: clamp(8px, 1.2vw, 12px); font-weight: 600; opacity: 0.8; font-size: clamp(14px, 1.4vw, 18px); }
+.home-figure { margin: 0; display: block; border-radius: 22px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.6); box-shadow: var(--shadow); }
+.home-figure-img { display: block; width: 100%; height: min(70vh, 720px); object-fit: cover; }
+
+@media (max-width: 900px) {
+  .home-grid { grid-template-columns: 1fr; }
+  .home-figure-img { height: 50vh; }
+}
+
+/* ===== Budget layout ===== */
+.budget-wrap { max-width: 1200px; margin: 24px auto; padding: 16px; }
+.budget-toolbar { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; }
+.segmented { background: rgba(0,0,0,0.06); padding: 4px; border-radius: 999px; display: inline-flex; gap: 4px; }
+.seg-btn { border: 0; background: transparent; padding: 8px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; }
+.seg-btn.active { background: white; border: 1px solid rgba(0,0,0,0.08); box-shadow: var(--shadow); }
+
+.budget-grid { display: grid; grid-template-columns: 420px 1fr; gap: 24px; }
+@media (max-width: 1024px) { .budget-grid { grid-template-columns: 1fr; } }
+
+.donut-card { background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08); border-radius: 18px; padding: 14px; box-shadow: var(--shadow); }
+.donut { width: 100%; height: auto; }
+.legend { margin-top: 10px; display: grid; grid-template-columns: 1fr; gap: 6px; }
+.legend-row { display: grid; grid-template-columns: 16px 1fr auto; align-items: center; gap: 8px; font-size: 14px; }
+.legend-row .dot { width: 12px; height: 12px; border-radius: 999px; }
+.legend-row .amt { font-variant-numeric: tabular-nums; }
+
+.table-card { background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08); border-radius: 18px; padding: 14px; box-shadow: var(--shadow); }
+.table-head, .table-row { display: grid; grid-template-columns: 1fr 140px 140px 40px; gap: 10px; align-items: center; }
+.table-head { font-weight: 700; opacity: 0.8; padding: 6px 0; border-bottom: 1px dashed rgba(0,0,0,0.15); margin-bottom: 6px; }
+.table-row { padding: 4px 0; }
+.table-row input { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.15); background: rgba(255,255,255,0.85); }
+.table-row .link { border: 0; background: transparent; cursor: pointer; color: #3b82f6; font-weight: 700; }
+.table-row .link.danger { color: #ef4444; }
+.add-row { border-top: 1px dashed rgba(0,0,0,0.12); margin-top: 8px; padding-top: 8px; }
+
+.totals { display: flex; gap: 20px; justify-content: flex-end; margin-top: 10px; font-variant-numeric: tabular-nums; }
+.totals .over { color: #dc2626; }
+.totals .remaining { color: #16a34a; }
