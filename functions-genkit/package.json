@@ -1,0 +1,21 @@
+{
+  "name": "functions-genkit",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "lint": "echo \"(optional) add ESLint later\"",
+    "build": "echo \"JS functions: no build step\"",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions:functions-genkit",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.5.0",
+    "firebase-functions": "^6.4.0"
+  }
+}
