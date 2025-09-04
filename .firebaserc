@@ -1,1 +1,5 @@
-{ "projects": { "default": "xfinance-3e935" } }
+{
+  "projects": {
+    "default": "xfinance-3e935"
+  }
+}
