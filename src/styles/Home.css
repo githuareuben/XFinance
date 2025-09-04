@@ -1,0 +1,91 @@
+/* Global safeguards to avoid stray gaps */
+
+@import url('https://fonts.googleapis.com/css2?family=Kings&family=Libertinus+Math&family=Raleway:ital,wght@0,100..900;1,100..900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+
+:root{
+    --brand-color: #8A2BE2;
+    --bg-color: #ffffff;
+      --font-sans: 'Raleway', 'Roboto', sans-serif;
+  --font-heading: 'Kings', serif;
+  --font-math: 'Libertinus Math', serif;
+
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-color); /* black background throughout */
+}
+
+/* Wrapper */
+.home {
+  min-height: 100vh;
+  background: #ffffff;
+  color: var(--brand-color);
+}
+
+/* ====== Section A: quote hero (like “CAIN”) ====== */
+.home-hero {
+  max-height: 30vh;                /* full screen */
+  display: grid;
+  place-items: center;               /* center quote */
+  background: var(--bg-color);                  /* solid black */
+  padding: 4rem 1.25rem;             /* breathing room */
+  box-sizing: border-box;
+}
+
+.home-quote {
+  margin: 0;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.home-quote-text {
+    font-family: var(--font-heading);
+  font-size: clamp(2rem, 6vw, 5rem); /* responsive scale */
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.home-quote-mark {
+  opacity: 0.8;
+}
+
+.home-quote-author {
+  margin-top: 0.75rem;
+  font-size: clamp(0.9rem, 2vw, 1.25rem);
+  opacity: 0.9;
+}
+
+/* ====== Section B: full-bleed picture band ====== */
+.home-picture {
+  /* a little scroll like the reference site */
+  max-height: 75vh;                  /* feel free to tweak */
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+
+/* Make image truly edge-to-edge with no white line:
+   - display:block removes inline-img whitespace
+   - width:100vw spans the full viewport width
+   - height:auto preserves aspect ratio
+   - object-fit:contain keeps full image visible
+*/
+.home-picture-img {
+  display: block;        /* removes white gap below images */
+  width: 100vw;          /* full viewport width */
+  height: auto;          /* keep aspect ratio */
+  max-height: 88vh;      /* leave a touch of breathing space */
+  object-fit: contain;   /* show all of the image */
+  background: #000;      /* in case img has transparency */
+}
+
+/* If you ever want a “cover” style band instead, swap to:
+.home-picture-img {
+  display: block;
+  width: 100vw;
+  height: 90vh;
+  object-fit: cover;     // fills band, may crop
+}
+*/

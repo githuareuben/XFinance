@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import BudgetCircle from "./components/BudgetCircle";
-import BudgetTable from "./components/BudgetTable";
-import { useUserDoc } from "./library/useUserDoc";
+import BudgetCircle from "../components/BudgetCircle";
+import BudgetTable from "../components/BudgetTable";
+import { useUserDoc } from "../library/useUserDoc";
 
 const defaultGoals = [
   { label: "Emergency Fund", target: 1000, saved: 120 },
