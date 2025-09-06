@@ -1,27 +1,49 @@
-import { useEffect, useRef, useState } from "react";
-import { ensureDoc, watchDoc, patchDoc } from "./firebase";
+import { useEffect, useState } from "react";
+import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { db } from "./firebase"; // ✅ use the initialized db from firebase.js
 
-/** Sync a Firestore doc with defaults; returns { data, ready, update } */
-export function useUserDoc(path, defaults) {
-  const [data, setData] = useState(null);
+/**
+ * Hook for syncing a Firestore document.
+ * - Auto-creates the document with `initial` if it doesn't exist.
+ * - Always returns safe defaults for new users.
+ */
+export function useUserDoc(path, initial = {}) {
+  const [data, setData] = useState(initial);
   const [ready, setReady] = useState(false);
-  const latestPath = useRef(path);
-
-  useEffect(() => { latestPath.current = path; }, [path]);
 
   useEffect(() => {
-    let unsub = () => {};
-    (async () => {
-      if (!path) return;
-      await ensureDoc(path, defaults);
-      unsub = watchDoc(path, d => { setData(d); setReady(true); });
-    })();
-    return () => unsub();
+    if (!path) return;
+
+    const ref = doc(db, path);
+
+    const unsub = onSnapshot(
+      ref,
+      async (snap) => {
+        if (!snap.exists()) {
+          // Create a fresh doc for brand-new users
+          await setDoc(ref, initial);
+          setData(initial);
+          setReady(true);
+          return;
+        }
+        setData(snap.data());
+        setReady(true);
+      },
+      (err) => {
+        console.error("useUserDoc onSnapshot error:", err);
+        setData(initial);
+        setReady(true);
+      }
+    );
+
+    return unsub;
   }, [path]);
 
+  // Merge-patch helper
   const update = async (patch) => {
-    if (!latestPath.current) return;
-    await patchDoc(latestPath.current, patch);
+    if (!path) return;
+    const ref = doc(db, path);
+    await updateDoc(ref, patch);
   };
 
   return { data, ready, update };

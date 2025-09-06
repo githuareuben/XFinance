@@ -1,0 +1,230 @@
+/* ===== Global theming for Budget page ===== */
+:root {
+  --accent: #f0eefa;
+  --accent-muted: #B7B7B7;
+
+  --budget-bg: rgba(208, 170, 243, 0.15); /* #D0AAF3 transparent */
+  --tile-bg: #f7eeff;                      /* tile color */
+  --tile-bg-pressed: #c9a2ed;              /* pressed state */
+  --tile-fg: #3d2b5c;                      /* text on tiles (darker, readable) */
+}
+
+/* Page shell */
+.budget-wrap {
+  max-width: 1200px;
+  margin: 24px auto 48px;
+  padding: 16px;
+  background: var(--budget-bg);
+  border-radius: 16px;
+}
+
+/* Section spacing */
+.section { margin-bottom: 24px; }
+
+/* Header line (date + calendar + schedule) */
+.headerline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.budget-date { font-weight: 700; }
+.budget-week { opacity: 0.75; }
+
+/* Icon pill (calendar button) */
+.icon-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #fff;
+  cursor: pointer;
+  color: var(--accent-muted);
+}
+.svg-24 {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+/* Calendar card */
+.calendar-card { padding: 8px 0; }
+.calendar-input {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.15);
+  background: #fff;
+}
+
+/* Schedule select */
+.schedule-label { font-weight: 700; }
+.schedule-select {
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.15);
+  padding: 6px 10px;
+  background: #fff;
+}
+
+/* Toolbar toggle */
+.budget-toolbar { display: flex; justify-content: center; }
+.segmented {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 4px;
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+}
+.seg-btn {
+  border: 0;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid rgba(0,0,0,0.08);
+  color: var(--accent-muted);
+}
+.seg-btn.active {
+  outline: 2px solid rgba(138,43,226,0.35);
+  color: #333;
+}
+
+/* Card base (tiles + chart) */
+.card {
+  background: var(--tile-bg);
+  color: var(--tile-fg);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+}
+
+/* Chart card and summary inside */
+.chart-card { margin-top: 4px; }
+.chart-summary {
+  margin-top: 8px;
+  text-align: center;
+  font-weight: 800;
+}
+
+/* FLEX entry tiles */
+.cards-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Income tile spans 100% width, fixed height with internal scroll area */
+.entry-card.full {
+  flex: 1 1 100%;
+  min-height: 180px;
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Target & Expenses tiles are fixed size  (stay inside limits) */
+.entry-card.fixed {
+  flex: 0 0 300px;
+  width: 300px;
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Common tile look */
+.entry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.entry-title { font-weight: 800; letter-spacing: 0.02em; }
+.entry-sub { opacity: 0.85; }
+.entry-value { font-size: 1.1rem; font-weight: 900; }
+
+/* input + save inline (kept inside tile) */
+.inline-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+.tile-input {
+  width: 170px;
+  max-width: 70%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.15);
+  background: #fff;
+  color: #111;
+  outline: none;
+}
+
+/* remove up/down arrows on number-like inputs */
+.tile-input[type=number]::-webkit-outer-spin-button,
+.tile-input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.tile-input[type=number] { -moz-appearance: textfield; }
+
+/* Save button (pill) */
+.pill-link {
+  border: 0;
+  background: #fff;
+  color: #111;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.pill-link:hover { background: #f0f0f0; }
+
+/* small error text inside tiles */
+.error-note {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+/* Legend rows inside tiles */
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+.legend-label {
+  flex: 1;
+  margin-left: 6px;
+}
+
+/* Scroll area INSIDE the tile so nothing spills out */
+.tile-scroll {
+  margin-top: 10px;
+  overflow: auto;
+  padding-right: 6px; /* keep scrollbar from overlapping content */
+  max-height: 110px;  /* matches fixed tile heights */
+}
+
+/* Hover/active contrast */
+.entry-card:hover { filter: brightness(0.98); }
+.entry-card:active { filter: brightness(0.95); }
+
+/* Make focus styles visible */
+.tile-input:focus,
+.pill-link:focus,
+.schedule-select:focus,
+.calendar-input:focus {
+  outline: 2px solid rgba(138,43,226,0.4);
+  outline-offset: 2px;
+}
