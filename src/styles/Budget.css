@@ -1,12 +1,53 @@
 /* ===== Global theming for Budget page ===== */
 :root {
-  --accent: #f0eefa;
-  --accent-muted: #B7B7B7;
+  /* === Core brand colors === */
+  --accent: #E8DCFB;          /* Primary accent (light purple background highlights) */
+  --accent-muted: #B7B7B7;    /* Muted accent for icons/text */
 
-  --budget-bg: rgba(208, 170, 243, 0.15); /* #D0AAF3 transparent */
-  --tile-bg: #f7eeff;                      /* tile color */
-  --tile-bg-pressed: #c9a2ed;              /* pressed state */
-  --tile-fg: #3d2b5c;                      /* text on tiles (darker, readable) */
+  /* === Page background === */
+  --budget-bg: rgba(208, 170, 243, 0.15); /* Whole budget page background tint */
+
+  /* === Tile defaults === */
+  --tile-bg: #DBBFF6;         /* Default tile background */
+  --tile-bg-pressed: #c9a2ed; /* Tile pressed/active background */
+  --tile-fg: #3d2b5c;         /* Text color inside tiles */
+
+  /* === Section-specific tile colors === */
+  --income-bg: #e9f5ff;       /* Income tile background */
+  --expense-bg: #fff3f3;      /* Expense tile background */
+  --target-bg: #f9fff3;       /* Target tile background */
+
+  /* === Entry tiles (inside scrolls) === */
+  --entry-tile-bg: #ffffff;   /* Small sub-tile background */
+  --entry-tile-border: rgba(0,0,0,0.12); /* Sub-tile border */
+
+  /* === Borders & shadows === */
+  --tile-border: rgba(0,0,0,0.15);  /* Outer big tiles border */
+  --tile-shadow: rgba(0,0,0,0.12);  /* Big tile shadow */
+  --tile-hover-shadow: rgba(0,0,0,0.1); /* Hover shadow for inner tiles */
+  --border-light: rgba(0,0,0,0.08); /* Light border for dividers, pills */
+
+  /* === Calendar colors === */
+  --calendar-cell-bg: #fff;          /* Default calendar cell */
+  --calendar-muted-bg: #fafafa;      /* Muted cells (out of month) */
+  --calendar-muted-fg: #a1a1a1;      /* Text for muted cells */
+  --calendar-highlight-bg: rgba(138,43,226,0.12);  /* Highlighted day */
+  --calendar-highlight-border: rgba(138,43,226,0.35); /* Highlight border */
+  --calendar-highlight-fg: #2d1c4a;  /* Highlight text */
+
+  /* === Buttons & pills === */
+  --pill-bg: #fff;
+  --pill-border: rgba(0,0,0,0.08);
+  --pill-hover-bg: #f0f0f0;
+
+  /* === Error & success === */
+  --error-fg: #b91c1c;        /* Error messages */
+  --success-fg: #10b981;      /* Success indicators */
+
+  /* === Misc === */
+  --scrollbar-thumb: rgba(138, 43, 226, 0.3); /* Purple scrollbar */
+  --scrollbar-thumb-hover: rgba(138, 43, 226, 0.5);
+  --segmented-bg: rgba(0, 0, 0, 0.06); /* Background for segmented buttons */
 }
 
 /* Page shell */
@@ -49,14 +90,14 @@
   justify-content: center;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(0,0,0,0.08);
-  background: #fff;
+  border: 1px solid var(--pill-border);
+  background: var(--pill-bg);
   cursor: pointer;
   color: var(--accent-muted);
   transition: all 0.2s ease;
 }
 .icon-pill:hover {
-  background: #f5f5f5;
+  background: var(--pill-hover-bg);
   transform: translateY(-1px);
 }
 .svg-24 {
@@ -70,356 +111,75 @@
 .calendar-input {
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.15);
-  background: #fff;
+  border: 1px solid var(--tile-border);
+  background: var(--pill-bg);
 }
 
-/* Settings card */
-.settings-card {
-  margin-top: 4px;
-}
-.settings-title {
-  margin: 0 0 16px 0;
-  font-weight: 800;
-  color: var(--tile-fg);
-}
-.settings-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  gap: 16px;
-}
-.settings-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  flex: 1;
-}
-.settings-label input[type="checkbox"] {
-  margin: 0;
-  transform: scale(1.2);
-}
-.settings-select {
-  padding: 6px 10px;
+/* ===== Mini calendar styles ===== */
+.cal-cell {
+  height: 34px;
   border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.15);
-  background: #fff;
-  min-width: 120px;
-}
-
-/* Schedule select */
-.schedule-label { font-weight: 700; }
-.schedule-select {
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.15);
-  padding: 6px 10px;
-  background: #fff;
-}
-
-/* Toolbar toggle */
-.budget-toolbar { display: flex; justify-content: center; }
-.segmented {
-  background: rgba(0, 0, 0, 0.06);
-  padding: 4px;
-  border-radius: 999px;
-  display: inline-flex;
-  gap: 6px;
-}
-.seg-btn {
-  border: 0;
-  background: #fff;
-  padding: 6px 10px;
-  border-radius: 999px;
+  background: var(--calendar-cell-bg);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  border: 1px solid rgba(0,0,0,0.08);
-  color: var(--accent-muted);
-  transition: all 0.2s ease;
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
 }
-.seg-btn:hover {
-  background: #f8f8f8;
+.cal-cell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px var(--tile-shadow);
 }
-.seg-btn.active {
-  outline: 2px solid rgba(138,43,226,0.35);
-  color: #333;
+.cal-muted {
+  background: var(--calendar-muted-bg);
+  color: var(--calendar-muted-fg);
+  border-style: dashed;
+  pointer-events: none;
+}
+.cal-highlight {
+  background: var(--calendar-highlight-bg);
+  border-color: var(--calendar-highlight-border);
+  color: var(--calendar-highlight-fg);
+  font-weight: 800;
 }
 
-/* Card base (tiles + chart) */
+/* Card base */
 .card {
   background: var(--tile-bg);
   color: var(--tile-fg);
-  border: 1px solid rgba(0,0,0,0.08);
+  border: 1px solid var(--border-light);
   border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  box-shadow: 0 8px 24px var(--tile-shadow);
 }
 
-/* Chart card and summary inside */
-.chart-card { margin-top: 4px; }
-.chart-summary {
-  margin-top: 8px;
-  text-align: center;
-  font-weight: 800;
+/* Entry tiles */
+.entry-card {
+  border: 2px solid var(--tile-border);
+  box-shadow: 0 10px 28px var(--tile-shadow);
+  margin: 20px;
+}
+.entry-card[aria-label="Income"] { background: var(--income-bg); }
+.entry-card[aria-label="Expenses"] { background: var(--expense-bg); }
+.entry-card[aria-label="Target"] { background: var(--target-bg); }
+
+/* Inner sub-tiles */
+.tile-scroll .entry-row {
+  width: 150px;
+  height: 100px;
+  border-radius: 12px;
+  background: var(--entry-tile-bg);
+  border: 1px solid var(--entry-tile-border);
+  padding: 10px;
+  margin: 6px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.tile-scroll .entry-row:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px var(--tile-hover-shadow);
 }
 
-/* FLEX entry tiles */
-.cards-flex {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-/* Income tile spans 100% width, fixed height with internal scroll area */
-.entry-card.full {
-  flex: 1 1 100%;
-  min-height: 180px;
-  max-height: 320px;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Target & Expenses tiles are fixed size  (stay inside limits) */
-.entry-card.fixed {
-  flex: 0 0 300px;
-  width: 300px;
-  height: 180px;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Common tile look */
-.entry-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.entry-title { font-weight: 800; letter-spacing: 0.02em; }
-.entry-sub { opacity: 0.85; }
-.entry-value { font-size: 1.1rem; font-weight: 900; }
-
-/* Enhanced income item display */
-.income-item-details {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-.income-item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.schedule-info {
-  font-size: 0.8rem;
-  opacity: 0.7;
-  font-weight: 500;
-}
-
-/* input + save inline (kept inside tile) */
-.inline-form {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.tile-input {
-  width: 170px;
-  max-width: 70%;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.15);
-  background: #fff;
-  color: #111;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-.tile-input:focus {
-  border-color: #8A2BE2;
-}
-
-/* Tile select for schedule settings */
-.tile-select {
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.15);
-  background: #fff;
-  color: #111;
-  outline: none;
-  min-width: 120px;
-  transition: border-color 0.2s ease;
-}
-.tile-select:focus {
-  border-color: #8A2BE2;
-}
-
-/* remove up/down arrows on number-like inputs */
-.tile-input[type=number]::-webkit-outer-spin-button,
-.tile-input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.tile-input[type=number] { -moz-appearance: textfield; }
-
-/* Save button (pill) */
-.pill-link {
-  border: 0;
-  background: #fff;
-  color: #111;
-  padding: 6px 10px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 800;
-  border: 1px solid rgba(0,0,0,0.08);
-  transition: all 0.2s ease;
-}
-.pill-link:hover { 
-  background: #f0f0f0; 
-  transform: translateY(-1px);
-}
-
-/* small error text inside tiles */
-.error-note {
-  color: #b91c1c;
-  font-weight: 700;
-  font-size: 0.85rem;
-  margin-top: 4px;
-}
-
-/* Legend rows inside tiles */
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  flex-shrink: 0;
-}
-.legend-label {
-  flex: 1;
-  margin-left: 6px;
-}
-
-/* Clickable expense tiles */
-.expense-tile-clickable {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 4px 8px;
-  border-radius: 8px;
-  margin: 2px -8px;
-}
-.expense-tile-clickable:hover {
-  background: rgba(138, 43, 226, 0.1);
-  transform: translateX(2px);
-}
-.expense-tile-clickable:active {
-  background: rgba(138, 43, 226, 0.2);
-}
-
-/* Scroll area INSIDE the tile so nothing spills out */
-.tile-scroll {
-  margin-top: 10px;
-  overflow: auto;
-  padding-right: 6px; /* keep scrollbar from overlapping content */
-  max-height: 130px;  /* increased for better visibility */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(138, 43, 226, 0.3) transparent;
-}
-
-/* Webkit scrollbar styling */
-.tile-scroll::-webkit-scrollbar {
-  width: 6px;
-}
-.tile-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.tile-scroll::-webkit-scrollbar-thumb {
-  background: rgba(138, 43, 226, 0.3);
-  border-radius: 3px;
-}
-.tile-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(138, 43, 226, 0.5);
-}
-
-/* Hover/active contrast */
-.entry-card:hover { 
-  filter: brightness(0.98); 
-  transform: translateY(-1px);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.08);
-}
-.entry-card:active { filter: brightness(0.95); }
-
-/* Make focus styles visible */
-.tile-input:focus,
-.tile-select:focus,
-.pill-link:focus,
-.schedule-select:focus,
-.settings-select:focus,
-.calendar-input:focus {
-  outline: 2px solid rgba(138,43,226,0.4);
-  outline-offset: 2px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .headerline {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-  
-  .header-left,
-  .header-right {
-    justify-content: center;
-  }
-  
-  .entry-card.fixed {
-    flex: 1 1 100%;
-    width: auto;
-    min-height: 160px;
-    height: auto;
-  }
-  
-  .settings-row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  
-  .settings-label {
-    justify-content: space-between;
-  }
-}
-
-/* Animation for new entries */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.entry-row {
-  animation: slideIn 0.3s ease-out;
-}
-
-/* Success state for auto-refresh */
-.auto-refresh-indicator {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 8px;
-  height: 8px;
-  background: #10b981;
-  border-radius: 50%;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
+/* Error and success */
+.error-note { color: var(--error-fg); }
+.auto-refresh-indicator { background: var(--success-fg); }

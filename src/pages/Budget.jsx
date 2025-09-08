@@ -165,6 +165,14 @@ export default function Budget({ user }) {
   const [refDate, setRefDate] = useState(() => new Date());
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // only show the "Add income" CTA after the tile is pressed
+const [incomeTileOpen, setIncomeTileOpen] = useState(false);
+
+  // NEW: Summary export UI state
+  const [showSummaryDialog, setShowSummaryDialog] = useState(false);
+  const [summaryMode, setSummaryMode] = useState("this-period"); // 'this-period' | 'this-month' | 'custom'
+  const [customFrom, setCustomFrom] = useState(toInputDate(new Date()));
+  const [customTo, setCustomTo] = useState(toInputDate(new Date()));
 
   // two-step editors that live INSIDE tiles
   // income editor: step = "source" | "amount" | "schedule"
@@ -278,6 +286,8 @@ export default function Budget({ user }) {
   const schedule = (data?.schedule || "weekly").toLowerCase();
   const settings = data?.settings || DEFAULT_MODEL.settings;
   const period = getPeriod(schedule, refDate);
+
+  // FIX: always compute week number from the CURRENT refDate so it never “sticks”
   const weekNo = weekNumberMonBased(refDate);
 
   // Current-period entries
@@ -317,15 +327,95 @@ export default function Budget({ user }) {
   /* ---------------------------------------
      Handlers
   ----------------------------------------*/
+  // (kept for internal logic; UI selector removed)
   const onChangeSchedule = async (e) => {
     await update({ schedule: e.target.value });
   };
 
-  const onPickDate = (e) => {
-    const val = e.target.value;
-    if (!val) return;
-    const [y, m, d] = val.split("-").map((n) => parseInt(n, 10));
-    setRefDate(new Date(y, m - 1, d));
+  // Ensure only one "tab" open at a time
+  const toggleCalendar = () => {
+    setShowCalendar((prev) => {
+      const next = !prev;
+      if (next) {
+        setShowSummaryDialog(false);
+        setShowSettings(false);
+      }
+      return next;
+    });
+  };
+  const toggleSummary = () => {
+    setShowSummaryDialog((prev) => {
+      const next = !prev; // clicking Summary closes it if open
+      if (next) {
+        setShowCalendar(false);
+        setShowSettings(false);
+      }
+      return next;
+    });
+  };
+  const toggleSettings = () => {
+    setShowSettings((prev) => {
+      const next = !prev;
+      if (next) {
+        setShowCalendar(false);
+        setShowSummaryDialog(false);
+      }
+      return next;
+    });
+  };
+
+  // Mini-calendar month helpers
+  const [calMonth, setCalMonth] = useState(() => new Date(refDate.getFullYear(), refDate.getMonth(), 1));
+  useEffect(() => {
+    // keep calendar month in sync when refDate changes
+    setCalMonth(new Date(refDate.getFullYear(), refDate.getMonth(), 1));
+  }, [refDate]);
+
+  const prevMonth = () => {
+    setCalMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1));
+  };
+  const nextMonth = () => {
+    setCalMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1));
+  };
+
+  // Which days to highlight as income days
+  const incomeDaySet = useMemo(() => {
+    const set = new Set();
+    const monthEnd = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0);
+    const daysInMonth = monthEnd.getDate();
+
+    // Collect weekly/fortnight weekday highlights
+    const payDays = new Set();
+    incomes.forEach((inc) => {
+      if (schedule === "weekly" || schedule === "fortnight") {
+        const d = typeof inc.payDay === "number" ? inc.payDay : settings.defaultPayDay;
+        payDays.add(d);
+      }
+    });
+
+    // Collect monthly pay date highlights
+    const payDates = new Set();
+    incomes.forEach((inc) => {
+      if (schedule === "monthly") {
+        const d = typeof inc.payDate === "number" ? inc.payDate : settings.defaultPayDate;
+        if (d >= 1 && d <= 31) payDates.add(d);
+      }
+    });
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(calMonth.getFullYear(), calMonth.getMonth(), day);
+      if (schedule === "monthly") {
+        if (payDates.has(day)) set.add(day);
+      } else {
+        if (payDays.has(d.getDay())) set.add(day);
+      }
+    }
+    return set;
+  }, [incomes, settings.defaultPayDay, settings.defaultPayDate, schedule, calMonth]);
+
+  const onPickDate = (pickedDate) => {
+    if (!pickedDate) return;
+    setRefDate(pickedDate);
     setShowCalendar(false);
   };
 
@@ -416,7 +506,46 @@ export default function Budget({ user }) {
     setTargetEditor(null);
   };
 
-  // Add amount to existing expense category
+  // Adjust / delete individual entries
+  const adjustIncomeEntry = async (entry) => {
+    const val = prompt(
+      `Adjust "${entry.source}" (current $${fmt(entry.amount)}).\n` +
+      'Enter +amount to add, -amount to subtract, or type DELETE to remove:'
+    );
+    if (val == null) return;
+    if (val.trim().toUpperCase() === "DELETE") {
+      const newArr = (data?.incomes || []).filter((e) => e.id !== entry.id);
+      await update({ incomes: newArr });
+      return;
+    }
+    const delta = Number(val);
+    if (!isFinite(delta)) return alert("Enter a number like 40 or -40, or DELETE.");
+    const newArr = (data?.incomes || []).map((e) =>
+      e.id === entry.id ? { ...e, amount: Math.max(0, toMoney((e.amount || 0) + delta)) } : e
+    );
+    await update({ incomes: newArr });
+  };
+
+  const adjustExpenseEntry = async (entry) => {
+    const val = prompt(
+      `Adjust "${entry.category}" (current $${fmt(entry.amount)}).\n` +
+      'Enter +amount to add, -amount to subtract, or type DELETE to remove:'
+    );
+    if (val == null) return;
+    if (val.trim().toUpperCase() === "DELETE") {
+      const newArr = (data?.expenses || []).filter((e) => e.id !== entry.id);
+      await update({ expenses: newArr });
+      return;
+    }
+    const delta = Number(val);
+    if (!isFinite(delta)) return alert("Enter a number like 40 or -40, or DELETE.");
+    const newArr = (data?.expenses || []).map((e) =>
+      e.id === entry.id ? { ...e, amount: Math.max(0, toMoney((e.amount || 0) + delta)) } : e
+    );
+    await update({ expenses: newArr });
+  };
+
+  // Add amount to existing expense category (kept for convenience)
   const addToExpenseCategory = async (category) => {
     const amount = prompt(`Add amount to ${category}:`);
     if (!amount) return;
@@ -433,17 +562,176 @@ export default function Budget({ user }) {
     });
   };
 
+  // ===== Summary export (robust: window + iframe fallback) =====
+  function getSummaryRange() {
+    if (summaryMode === "this-period") return period;
+    if (summaryMode === "this-month") {
+      const d0 = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+      const d1 = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
+      return { start: d0, end: d1 };
+    }
+    // custom
+    const [fy, fm, fd] = customFrom.split("-").map((n) => parseInt(n, 10));
+    const [ty, tm, td] = customTo.split("-").map((n) => parseInt(n, 10));
+    const d0 = new Date(fy, fm - 1, fd || 1);
+    const d1 = new Date(ty, tm - 1, td || 1);
+    return { start: d0, end: d1 };
+  }
+
+  const exportSummaryPDF = () => {
+    const rng = getSummaryRange();
+    // Filter data to range
+    const inRange = (ts) => {
+      const d = new Date(ts);
+      return d >= rng.start && d <= rng.end;
+    };
+    const inc = incomes.filter((e) => inRange(e.ts));
+    const exp = expenses.filter((e) => inRange(e.ts));
+    const incSum = sumAmounts(inc);
+    const expSum = sumAmounts(exp);
+    const incBy = sumByKey(inc, "source");
+    const expBy = sumByKey(exp, "category");
+
+    // Try to grab the chart markup from the page (SVG will print fine)
+    const chartHtml = document.querySelector(".chart-card")?.outerHTML || "";
+
+    const html = `
+      <html>
+        <head>
+          <title>Finance Summary</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <style>
+            body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif; padding: 24px; color: #111; }
+            h1,h2 { margin: 0 0 8px 0; }
+            .muted { color: #6b7280; }
+            .row { display: flex; gap: 24px; flex-wrap: wrap; }
+            .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; background: #fff; flex: 1 1 320px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+            th, td { text-align: left; border-bottom: 1px solid #f1f5f9; padding: 6px 4px; }
+            .total { font-weight: 800; }
+            .chart-wrap { margin-top: 12px; }
+            @media print { .no-print { display: none !important; } }
+          </style>
+        </head>
+        <body>
+          <h1>Finance Summary</h1>
+          <div class="muted">${rng.start.toDateString()} → ${rng.end.toDateString()}</div>
+
+          <div class="row" style="margin-top:16px;">
+            <div class="card">
+              <h2>Totals</h2>
+              <div>Income: <strong>$${fmt(incSum)}</strong></div>
+              <div>Expenses: <strong>$${fmt(expSum)}</strong></div>
+              <div>Net: <strong>$${fmt(incSum - expSum)}</strong></div>
+            </div>
+
+            <div class="card">
+              <h2>Income by Source</h2>
+              <table>
+                <thead><tr><th>Source</th><th>Amount</th></tr></thead>
+                <tbody>
+                  ${Object.entries(incBy).map(([k,v]) => `<tr><td>${k}</td><td>$${fmt(v)}</td></tr>`).join("")}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card">
+              <h2>Expenses by Category</h2>
+              <table>
+                <thead><tr><th>Category</th><th>Amount</th></tr></thead>
+                <tbody>
+                  ${Object.entries(expBy).map(([k,v]) => `<tr><td>${k}</td><td>$${fmt(v)}</td></tr>`).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card chart-wrap">
+            <h2>Charts</h2>
+            ${chartHtml}
+          </div>
+
+          <div style="margin-top:16px;">
+            <button class="no-print" onclick="window.print()">Print / Save as PDF</button>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Preferred: open same-origin about:blank so printing works cleanly
+    let w = null;
+    try {
+      w = window.open("", "_blank");
+      if (w) {
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        try { w.focus(); } catch {}
+        return;
+      }
+    } catch {}
+
+    // Fallback: hidden iframe
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.setAttribute("sandbox", "allow-modals allow-same-origin allow-scripts allow-top-navigation-by-user-activation");
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } finally {
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      }
+    }, 200);
+  };
+
   /* ---------------------------------------
      UI states (no early returns)
   ----------------------------------------*/
   const showSignInMsg = !uid;
   const showLoading = uid && !ready;
 
+  // Build cells for the mini calendar
+  const calCells = useMemo(() => {
+    const start = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+    const end = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0);
+    const startDow = start.getDay(); // 0=Sun..6=Sat
+    const days = end.getDate();
+
+    const cells = [];
+
+    const dows = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    for (let i = 0; i < startDow; i++) {
+      cells.push({ label: "", muted: true });
+    }
+    for (let day = 1; day <= days; day++) {
+      cells.push({ label: String(day), day, highlight: incomeDaySet.has(day) });
+    }
+    return { dows, cells };
+  }, [calMonth, incomeDaySet]);
+
   return (
     <section className="budget-wrap">
-      {/* Header: date + calendar + schedule + settings */}
-      <div className="headerline section">
-        <div className="header-left">
+      {/* Header: date + calendar + (Summary) + settings */}
+      <div className="headerline section" style={{ position: "relative" }}>
+        <div className="header-left" style={{ position: "relative" }}>
           <strong className="budget-date">{period.start.toDateString()}</strong>
           <span className="budget-week">
             · {schedule === "weekly"
@@ -460,7 +748,7 @@ export default function Budget({ user }) {
             type="button"
             className="icon-pill"
             aria-label="Pick date"
-            onClick={() => setShowCalendar((s) => !s)}
+            onClick={toggleCalendar}
             title="Pick date"
           >
             {/* calendar svg */}
@@ -474,33 +762,90 @@ export default function Budget({ user }) {
             </svg>
           </button>
 
+          {/* Calendar overlay: force below-date row (full width inside header-left) */}
           {showCalendar && (
-            <div className="calendar-card">
-              <input
-                className="calendar-input"
-                type="date"
-                onChange={onPickDate}
-                defaultValue={toInputDate(refDate)}
-              />
+            <div className="calendar-card" style={{ flexBasis: "100%", marginTop: 8, zIndex: 1 }}>
+              <div className="card" style={{ padding: 12 }}>
+                <div className="cal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <button className="pill-link" onClick={prevMonth}>‹ Prev</button>
+                  <div style={{ fontWeight: 800 }}>
+                    {calMonth.toLocaleString(undefined, { month: "long", year: "numeric" })}
+                  </div>
+                  <button className="pill-link" onClick={nextMonth}>Next ›</button>
+                </div>
+
+                {/* DOW header */}
+                <div className="cal-grid" style={{ marginTop: 8, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+                  {calCells.dows.map((d) => (
+                    <div key={d} className="cal-dow" style={{ textAlign: "center", opacity: 0.7, fontWeight: 700 }}>{d}</div>
+                  ))}
+                </div>
+
+                {/* Days grid */}
+                <div className="cal-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, marginTop: 6 }}>
+                  {calCells.cells.map((c, i) => {
+                    const className = [
+                      "cal-cell",
+                      c.muted ? "cal-muted" : "",
+                      c.highlight ? "cal-highlight" : ""
+                    ].join(" ").trim();
+                    return (
+                      <div
+                        key={i}
+                        className={className}
+                        onClick={() => {
+                          if (!c.day) return;
+                          onPickDate(new Date(calMonth.getFullYear(), calMonth.getMonth(), c.day));
+                        }}
+                        role="button"
+                        title={c.day ? new Date(calMonth.getFullYear(), calMonth.getMonth(), c.day).toDateString() : ""}
+                        style={{
+                          textAlign: "center",
+                          padding: "6px 0",
+                          borderRadius: 8,
+                          border: "1px solid rgba(0,0,0,0.08)",
+                          background: c.highlight ? "rgba(138, 43, 226, 0.12)" : "#fff",
+                          cursor: c.day ? "pointer" : "default",
+                          opacity: c.muted ? 0.4 : 1
+                        }}
+                      >
+                        {c.label}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="cal-legend" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+                  <span><span className="dot weekly" style={{ display: "inline-block", width: 10, height: 10, background: "rgba(138,43,226,0.7)", borderRadius: 999, marginRight: 6 }}></span>Income day highlight</span>
+                  <button className="pill-link" onClick={() => setShowCalendar(false)}>Close</button>
+                </div>
+              </div>
             </div>
           )}
         </div>
 
         <div className="header-right">
-          <label className="schedule-label" htmlFor="sched">Schedule</label>
-          <select id="sched" className="schedule-select" value={schedule} onChange={onChangeSchedule}>
-            <option value="weekly">Weekly (Mon–Sun)</option>
-            <option value="fortnight">Fortnight</option>
-            <option value="monthly">Monthly</option>
-            <option value="yearly">Yearly</option>
-          </select>
+          {/* Summary toggles open/close; closes other tabs */}
+          <button
+            type="button"
+            className="icon-pill"
+            aria-label="Summary"
+            onClick={toggleSummary}
+            title="Export summary PDF"
+          >
+            {/* summary/chart svg */}
+            <svg className="svg-24" viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+              <path fill="currentColor" d="M3 3h18v2H3V3Zm0 4h10v2H3V7Zm0 4h14v2H3v-2Zm0 4h8v2H3v-2Zm14 0h4v2h-4v-2Zm-2.5-9.5 2.25 2.25L22 5.5 20.59 4.09l-3.84 3.84-1.16-1.17L14.5 9.5Z"/>
+            </svg>
+            <span style={{ marginLeft: 6, fontWeight: 700 }}>Summary</span>
+          </button>
 
-          {/* Settings button */}
+          {/* Settings button (now toggles; closes others) */}
           <button
             type="button"
             className="icon-pill"
             aria-label="Settings"
-            onClick={() => setShowSettings((s) => !s)}
+            onClick={toggleSettings}
             title="Settings"
           >
             {/* settings svg */}
@@ -516,9 +861,73 @@ export default function Budget({ user }) {
         </div>
       </div>
 
+      {/* Summary dialog */}
+      {showSummaryDialog && (
+        <div className="section" style={{ zIndex: 1, position: "relative" }}>
+          <div className="card" style={{ maxWidth: 640, margin: "0 auto" }}>
+            <h3 className="settings-title">Export Summary (PDF)</h3>
+            <div className="settings-row">
+              <label className="settings-label">
+                <input
+                  type="radio"
+                  name="sumrng"
+                  checked={summaryMode === "this-period"}
+                  onChange={() => setSummaryMode("this-period")}
+                />
+                This period ({period.start.toDateString()} → {period.end.toDateString()})
+              </label>
+            </div>
+            <div className="settings-row">
+              <label className="settings-label">
+                <input
+                  type="radio"
+                  name="sumrng"
+                  checked={summaryMode === "this-month"}
+                  onChange={() => setSummaryMode("this-month")}
+                />
+                This month ({new Date(refDate.getFullYear(), refDate.getMonth(), 1).toDateString()} → {new Date(refDate.getFullYear(), refDate.getMonth()+1, 0).toDateString()})
+              </label>
+            </div>
+            <div className="settings-row" style={{ alignItems: "center" }}>
+              <label className="settings-label" style={{ gap: 12 }}>
+                <input
+                  type="radio"
+                  name="sumrng"
+                  checked={summaryMode === "custom"}
+                  onChange={() => setSummaryMode("custom")}
+                />
+                Custom range
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="date"
+                  className="calendar-input"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  disabled={summaryMode !== "custom"}
+                />
+                <span style={{ lineHeight: "34px" }}>→</span>
+                <input
+                  type="date"
+                  className="calendar-input"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  disabled={summaryMode !== "custom"}
+                />
+              </div>
+            </div>
+
+            <div className="settings-row" style={{ justifyContent: "flex-end" }}>
+              <button className="pill-link" onClick={toggleSummary}>Close</button>
+              <button className="pill-link" onClick={exportSummaryPDF}>Export</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings Panel */}
       {showSettings && (
-        <div className="section">
+        <div className="section" style={{ zIndex: 1, position: "relative" }}>
           <div className="card settings-card">
             <h3 className="settings-title">Settings</h3>
 
@@ -565,7 +974,7 @@ export default function Budget({ user }) {
 
             <button
               className="pill-link"
-              onClick={() => setShowSettings(false)}
+              onClick={toggleSettings}
             >
               Close Settings
             </button>
@@ -686,7 +1095,7 @@ export default function Budget({ user }) {
               <div className="entry-row">
                 <div>
                   <div className="entry-title">Income</div>
-                  <div className="entry-sub">This {schedule}: {Object.keys(incomeBySource).length} source(s)</div>
+                  <div className="entry-sub">This {schedule}: {incomesCurrent.length} entr{incomesCurrent.length === 1 ? "y" : "ies"}</div>
                 </div>
                 <div className="entry-value">${fmt(totalIncome)}</div>
               </div>
@@ -756,31 +1165,39 @@ export default function Budget({ user }) {
                 </div>
               )}
 
-              {/* breakdown list (scrolls inside) */}
-              <div className="tile-scroll">
-                {Object.entries(incomeBySource).map(([s, v], i) => {
-                  const incomeItem = incomes.find((inc) => inc.source === s);
-                  const scheduleInfo = incomeItem
-                    ? (schedule === "weekly" || schedule === "fortnight")
-                      ? `Pays: ${getDayName(incomeItem.payDay ?? settings.defaultPayDay)}`
-                      : schedule === "monthly"
-                      ? `Pays: ${(incomeItem.payDate ?? settings.defaultPayDate)}${getOrdinalSuffix(incomeItem.payDate ?? settings.defaultPayDate)}`
-                      : "Yearly"
-                    : "";
-
-                  return (
-                    <div key={s} className="entry-row">
-                      <div className="income-item-details">
-                        <span className="legend-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
-                        <div className="income-item-info">
-                          <span className="legend-label">{s}</span>
-                          {scheduleInfo && <div className="schedule-info">{scheduleInfo}</div>}
+              {/* individual income entries as tiles */}
+              <div className="tile-scroll" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
+                {incomesCurrent.map((e, i) => (
+                  <div
+                    key={e.id}
+                    onClick={() => adjustIncomeEntry(e)}
+                    className="entry-row"
+                    title='Click to +add / -subtract, or type "DELETE" to remove'
+                    style={{
+                      padding: 10,
+                      borderRadius: 12,
+                      border: "1px solid rgba(0,0,0,0.08)",
+                      background: "#fff",
+                      cursor: "pointer",
+                      alignItems: "flex-start"
+                    }}
+                  >
+                    <div className="income-item-details">
+                      <span className="legend-dot" style={{ background: PALETTE[i % PALETTE.length], marginTop: 4 }} />
+                      <div className="income-item-info">
+                        <span className="legend-label" style={{ fontWeight: 700 }}>{e.source || "Income"}</span>
+                        <div className="schedule-info">
+                          {(schedule === "weekly" || schedule === "fortnight")
+                            ? `Pays: ${getDayName(e.payDay ?? settings.defaultPayDay)}`
+                            : schedule === "monthly"
+                            ? `Pays: ${(e.payDate ?? settings.defaultPayDate)}${getOrdinalSuffix(e.payDate ?? settings.defaultPayDate)}`
+                            : new Date(e.ts).toDateString()}
                         </div>
                       </div>
-                      <strong>${fmt(v)}</strong>
                     </div>
-                  );
-                })}
+                    <strong>${fmt(e.amount)}</strong>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -851,18 +1268,27 @@ export default function Budget({ user }) {
                 </div>
               )}
 
-              {/* breakdown list (scrolls inside) with clickable tiles */}
-              <div className="tile-scroll">
-                {Object.entries(spendByCategory).map(([c, v], i) => (
+              {/* individual expense entries as tiles */}
+              <div className="tile-scroll" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
+                {expensesCurrent.map((e, i) => (
                   <div
-                    key={c}
-                    className="entry-row expense-tile-clickable"
-                    onClick={() => addToExpenseCategory(c)}
-                    title={`Click to add more to ${c}`}
+                    key={e.id}
+                    onClick={() => adjustExpenseEntry(e)}
+                    className="entry-row"
+                    title='Click to +add / -subtract, or type "DELETE" to remove'
+                    style={{
+                      padding: 10,
+                      borderRadius: 12,
+                      border: "1px solid rgba(0,0,0,0.08)",
+                      background: "#fff",
+                      cursor: "pointer",
+                    }}
                   >
-                    <span className="legend-dot" style={{ background: darken(PALETTE[i % PALETTE.length], 0.12) }} />
-                    <span className="legend-label">{c}</span>
-                    <strong>${fmt(v)}</strong>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+                      <span className="legend-dot" style={{ background: darken(PALETTE[i % PALETTE.length], 0.12) }} />
+                      <span className="legend-label" style={{ fontWeight: 700 }}>{e.category || "Expense"}</span>
+                    </div>
+                    <strong>${fmt(e.amount)}</strong>
                   </div>
                 ))}
               </div>
