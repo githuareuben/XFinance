@@ -1,3 +1,4 @@
+// src/pages/Budget.jsx
 import { useEffect, useMemo, useState } from "react";
 import "../styles/Budget.css";
 import { useUserDoc } from "../library/useUserDoc";
@@ -15,14 +16,21 @@ import {
   Cell,
 } from "recharts";
 
+import BudgetSetupWizard from "../components/BudgetQuestionnaire";
+
 /* -----------------------------
    Default Firestore model
 ------------------------------*/
 const DEFAULT_MODEL = {
   schedule: "weekly", // weekly | fortnight | monthly | yearly
-  incomes: [],        // [{id, source, amount, ts}]
+  incomes: [],        // [{id, source, amount, ts, payDay?, payDate?, lastRefresh?}]
   expenses: [],       // [{id, category, amount, ts}]
   target: 0,
+  settings: {
+    autoRefresh: true,
+    defaultPayDay: 5, // Friday (0=Sunday, 1=Monday, etc.)
+    defaultPayDate: 1, // 1st of month
+  }
 };
 
 /* -----------------------------
@@ -63,6 +71,40 @@ function toInputDate(d) {
   return `${y}-${m}-${day}`;
 }
 
+// Auto-refresh logic
+function shouldRefreshIncome(income, schedule, settings) {
+  if (!settings?.autoRefresh) return false;
+  if (!income.lastRefresh) return false; // First time, don't auto-refresh
+
+  const now = new Date();
+  const lastRefresh = new Date(income.lastRefresh);
+
+  switch (schedule) {
+    case "weekly": {
+      const payDay = income.payDay ?? settings.defaultPayDay;
+      const daysSinceLastRefresh = Math.floor((now - lastRefresh) / (1000 * 60 * 60 * 24));
+      return daysSinceLastRefresh >= 7 && now.getDay() === payDay;
+    }
+    case "fortnight": {
+      const daysSince = Math.floor((now - lastRefresh) / (1000 * 60 * 60 * 24));
+      return daysSince >= 14;
+    }
+    case "monthly": {
+      const payDate = income.payDate ?? settings.defaultPayDate;
+      return now.getDate() === payDate && now.getMonth() !== lastRefresh.getMonth();
+    }
+    case "yearly":
+      return now.getFullYear() !== lastRefresh.getFullYear();
+    default:
+      return false;
+  }
+}
+
+function getDayName(dayIndex) {
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return days[dayIndex] || "Invalid";
+}
+
 /* small color helpers (fixed palette for legend) */
 const PALETTE = ["#8A2BE2", "#6A5ACD", "#9C7BFF", "#B69CFF", "#CBB5FF", "#7C59E6", "#5D40C6"];
 const darken = (hex, amt = 0.12) => {
@@ -87,6 +129,7 @@ function hexToHsl(hex) {
       case r: h = (g - b) / d + (g < b ? 6 : 0); break;
       case g: h = (b - r) / d + 2; break;
       case b: h = (r - g) / d + 4; break;
+      default: break;
     }
     h *= 60;
   }
@@ -121,24 +164,119 @@ export default function Budget({ user }) {
   const [chartMode, setChartMode] = useState("bar");       // "bar" | "pie"
   const [refDate, setRefDate] = useState(() => new Date());
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // two-step editors that live INSIDE tiles
-  // income editor: step = "source" | "amount"
+  // income editor: step = "source" | "amount" | "schedule"
   const [incomeEditor, setIncomeEditor] = useState(null);
   // expense editor: step = "category" | "amount"
   const [expenseEditor, setExpenseEditor] = useState(null);
   // target editor
   const [targetEditor, setTargetEditor] = useState(null);
 
-  // Ensure the model has schedule after load
+  /* === Onboarding (wizard) doc === */
+  const setupPath = user ? `users/${user.uid}/profile/setup` : null;
+  const {
+    data: setup = { hasDoneTour: false, hasDoneBudgetSetup: false },
+    ready: setupReady,
+    update: updateSetup,
+  } = useUserDoc(setupPath, { hasDoneTour: false, hasDoneBudgetSetup: false });
+
+  const [showWizard, setShowWizard] = useState(false);
+  const [savingWizard, setSavingWizard] = useState(false);
+
   useEffect(() => {
-    if (ready && data && !data.schedule) {
-      update({ schedule: "weekly" });
+    if (user && setupReady && !setup.hasDoneBudgetSetup) {
+      setShowWizard(true);
+    }
+  }, [user, setupReady, setup?.hasDoneBudgetSetup]);
+
+  async function handleWizardComplete(payload) {
+    // payload = { reasonPrimary, saveReason, targetDate, targetAmount, expenses[], incomes[] }
+    const targetNum = Number(payload.targetAmount || 0) || 0;
+    const now = Date.now();
+
+    const newExpenses = (payload.expenses || [])
+      .filter((e) => e.key)
+      .map((e) => ({
+        id: `${now}-${e.key}`,
+        category: e.key,
+        amount: Number(e.amount || 0) || 0,
+        ts: now,
+        freq: e.freq,
+      }));
+
+    const newIncomes = (payload.incomes || [])
+      .filter((i) => i.source)
+      .map((i) => ({
+        id: `${now}-${i.source}`,
+        source: i.source,
+        amount: Number(i.amount || 0) || 0,
+        ts: now,
+        freq: i.freq,
+        lastRefresh: now,
+      }));
+
+    try {
+      setSavingWizard(true);
+      await update({
+        target: targetNum > 0 ? targetNum : (typeof data?.target === "number" ? data.target : 0),
+        expenses: [...(data?.expenses || []), ...newExpenses],
+        incomes: [...(data?.incomes || []), ...newIncomes],
+        onboarding: {
+          reasonPrimary: payload.reasonPrimary,
+          saveReason: payload.saveReason || "",
+          targetDate: payload.targetDate || "",
+          createdAt: now,
+        },
+      });
+      await updateSetup({ hasDoneBudgetSetup: true, updatedAt: now });
+      setShowWizard(false);
+    } finally {
+      setSavingWizard(false);
+    }
+  }
+
+  // Ensure the model has schedule and settings after load
+  useEffect(() => {
+    if (ready && data) {
+      const updates = {};
+      if (!data.schedule) updates.schedule = "weekly";
+      if (!data.settings) updates.settings = DEFAULT_MODEL.settings;
+      if (Object.keys(updates).length > 0) {
+        update(updates);
+      }
+    }
+  }, [ready, data, update]);
+
+  // Auto-refresh incomes on load and periodically
+  useEffect(() => {
+    if (!ready || !data || !data.incomes?.length) return;
+
+    const settings = data.settings || DEFAULT_MODEL.settings;
+    const schedule = data.schedule || "weekly";
+
+    let hasRefreshes = false;
+    const updatedIncomes = data.incomes.map((income) => {
+      if (shouldRefreshIncome(income, schedule, settings)) {
+        hasRefreshes = true;
+        return {
+          ...income,
+          amount: 0,
+          lastRefresh: Date.now(),
+        };
+      }
+      return income;
+    });
+
+    if (hasRefreshes) {
+      update({ incomes: updatedIncomes });
     }
   }, [ready, data, update]);
 
   // Safe fallbacks if not ready
   const schedule = (data?.schedule || "weekly").toLowerCase();
+  const settings = data?.settings || DEFAULT_MODEL.settings;
   const period = getPeriod(schedule, refDate);
   const weekNo = weekNumberMonBased(refDate);
 
@@ -191,9 +329,22 @@ export default function Budget({ user }) {
     setShowCalendar(false);
   };
 
-  // Start 2-step editors
-  const startIncomeSource = () => setIncomeEditor({ step: "source", source: "", amount: "" });
-  const startExpenseCategory = () => setExpenseEditor({ step: "category", category: "", amount: "" });
+  // Settings handlers
+  const updateSettings = async (newSettings) => {
+    await update({ settings: { ...settings, ...newSettings } });
+  };
+
+  // Start 3-step editors
+  const startIncomeSource = () =>
+    setIncomeEditor({
+      step: "source",
+      source: "",
+      amount: "",
+      payDay: settings.defaultPayDay,
+      payDate: settings.defaultPayDate,
+    });
+  const startExpenseCategory = () =>
+    setExpenseEditor({ step: "category", category: "", amount: "" });
   const startTarget = () => setTargetEditor({ amount: String(target || "") });
 
   // Validate & advance income steps
@@ -201,17 +352,37 @@ export default function Budget({ user }) {
     if (!incomeEditor) return;
     const src = (incomeEditor.source || "").trim();
     if (!src) return setIncomeEditor({ ...incomeEditor, error: "Please enter a source of income." });
-    setIncomeEditor({ step: "amount", source: src, amount: "", error: "" });
+    setIncomeEditor({ ...incomeEditor, step: "amount", error: "" });
   };
-  const saveIncomeAmount = async () => {
+
+  const saveIncomeAmount = () => {
     if (!incomeEditor) return;
     const amt = toMoney(incomeEditor.amount);
     if (!isFinite(amt) || amt <= 0) {
       return setIncomeEditor({ ...incomeEditor, error: "Please enter a valid amount greater than 0." });
     }
+    setIncomeEditor({ ...incomeEditor, step: "schedule", error: "" });
+  };
+
+  const saveIncomeSchedule = async () => {
+    if (!incomeEditor) return;
     const now = Date.now();
+    const newIncome = {
+      id: `${now}`,
+      source: incomeEditor.source,
+      amount: toMoney(incomeEditor.amount),
+      ts: now,
+      lastRefresh: now,
+    };
+
+    if (schedule === "weekly" || schedule === "fortnight") {
+      newIncome.payDay = incomeEditor.payDay;
+    } else if (schedule === "monthly") {
+      newIncome.payDate = incomeEditor.payDate;
+    }
+
     await update({
-      incomes: [...(data?.incomes || []), { id: `${now}`, source: incomeEditor.source, amount: amt, ts: now }],
+      incomes: [...(data?.incomes || []), newIncome],
     });
     setIncomeEditor(null);
   };
@@ -245,6 +416,23 @@ export default function Budget({ user }) {
     setTargetEditor(null);
   };
 
+  // Add amount to existing expense category
+  const addToExpenseCategory = async (category) => {
+    const amount = prompt(`Add amount to ${category}:`);
+    if (!amount) return;
+
+    const amt = toMoney(amount);
+    if (!isFinite(amt) || amt <= 0) {
+      alert("Please enter a valid amount greater than 0.");
+      return;
+    }
+
+    const now = Date.now();
+    await update({
+      expenses: [...(data?.expenses || []), { id: `${now}`, category, amount: amt, ts: now }],
+    });
+  };
+
   /* ---------------------------------------
      UI states (no early returns)
   ----------------------------------------*/
@@ -253,11 +441,19 @@ export default function Budget({ user }) {
 
   return (
     <section className="budget-wrap">
-      {/* Header: date + calendar + schedule */}
+      {/* Header: date + calendar + schedule + settings */}
       <div className="headerline section">
         <div className="header-left">
           <strong className="budget-date">{period.start.toDateString()}</strong>
-          <span className="budget-week">· {schedule === "weekly" ? `Week ${weekNo}` : schedule === "monthly" ? period.start.toLocaleString(undefined, { month: "long", year: "numeric" }) : schedule === "fortnight" ? `Fortnight (starts ${period.start.toDateString()})` : period.start.getFullYear()}</span>
+          <span className="budget-week">
+            · {schedule === "weekly"
+              ? `Week ${weekNo}`
+              : schedule === "monthly"
+              ? period.start.toLocaleString(undefined, { month: "long", year: "numeric" })
+              : schedule === "fortnight"
+              ? `Fortnight (starts ${period.start.toDateString()})`
+              : period.start.getFullYear()}
+          </span>
 
           {/* Calendar button */}
           <button
@@ -274,7 +470,7 @@ export default function Budget({ user }) {
               viewBox="0 -960 960 960"
               aria-hidden="true"
             >
-              <path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400Z" fill="currentColor"/>
+              <path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440Z" fill="currentColor"/>
             </svg>
           </button>
 
@@ -298,8 +494,84 @@ export default function Budget({ user }) {
             <option value="monthly">Monthly</option>
             <option value="yearly">Yearly</option>
           </select>
+
+          {/* Settings button */}
+          <button
+            type="button"
+            className="icon-pill"
+            aria-label="Settings"
+            onClick={() => setShowSettings((s) => !s)}
+            title="Settings"
+          >
+            {/* settings svg */}
+            <svg
+              className="svg-24"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 -960 960 960"
+              aria-hidden="true"
+            >
+              <path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-1 13.5l103 78-110 190-119-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 41q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 65q-5 14-7 29.5t-2 31.5q0 16 2 31.5t7 29.5l-86 65 39 68 99-41q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z" fill="currentColor"/>
+            </svg>
+          </button>
         </div>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="section">
+          <div className="card settings-card">
+            <h3 className="settings-title">Settings</h3>
+
+            <div className="settings-row">
+              <label className="settings-label">
+                <input
+                  type="checkbox"
+                  checked={settings.autoRefresh}
+                  onChange={(e) => updateSettings({ autoRefresh: e.target.checked })}
+                />
+                Enable automatic income refresh
+              </label>
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-label">Default pay day (weekly/fortnight):</label>
+              <select
+                value={settings.defaultPayDay}
+                onChange={(e) => updateSettings({ defaultPayDay: parseInt(e.target.value) })}
+                className="settings-select"
+              >
+                <option value={0}>Sunday</option>
+                <option value={1}>Monday</option>
+                <option value={2}>Tuesday</option>
+                <option value={3}>Wednesday</option>
+                <option value={4}>Thursday</option>
+                <option value={5}>Friday</option>
+                <option value={6}>Saturday</option>
+              </select>
+            </div>
+
+            <div className="settings-row">
+              <label className="settings-label">Default pay date (monthly):</label>
+              <select
+                value={settings.defaultPayDate}
+                onChange={(e) => updateSettings({ defaultPayDate: parseInt(e.target.value) })}
+                className="settings-select"
+              >
+                {Array.from({ length: 31 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              className="pill-link"
+              onClick={() => setShowSettings(false)}
+            >
+              Close Settings
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* States */}
       {showSignInMsg && (
@@ -419,7 +691,7 @@ export default function Budget({ user }) {
                 <div className="entry-value">${fmt(totalIncome)}</div>
               </div>
 
-              {/* two-step inside tile */}
+              {/* three-step inside tile */}
               {incomeEditor ? (
                 <div className="inline-form" style={{ marginTop: 8 }}>
                   {incomeEditor.step === "source" && (
@@ -430,7 +702,7 @@ export default function Budget({ user }) {
                         value={incomeEditor.source}
                         onChange={(e) => setIncomeEditor({ ...incomeEditor, source: e.target.value, error: "" })}
                       />
-                      <button className="pill-link" onClick={saveIncomeSource}>Save</button>
+                      <button className="pill-link" onClick={saveIncomeSource}>Next</button>
                     </>
                   )}
                   {incomeEditor.step === "amount" && (
@@ -442,7 +714,38 @@ export default function Budget({ user }) {
                         value={incomeEditor.amount}
                         onChange={(e) => setIncomeEditor({ ...incomeEditor, amount: onlyNumeric(e.target.value), error: "" })}
                       />
-                      <button className="pill-link" onClick={saveIncomeAmount}>Save</button>
+                      <button className="pill-link" onClick={saveIncomeAmount}>Next</button>
+                    </>
+                  )}
+                  {incomeEditor.step === "schedule" && (
+                    <>
+                      {(schedule === "weekly" || schedule === "fortnight") && (
+                        <select
+                          className="tile-select"
+                          value={incomeEditor.payDay}
+                          onChange={(e) => setIncomeEditor({ ...incomeEditor, payDay: parseInt(e.target.value) })}
+                        >
+                          <option value={0}>Sunday</option>
+                          <option value={1}>Monday</option>
+                          <option value={2}>Tuesday</option>
+                          <option value={3}>Wednesday</option>
+                          <option value={4}>Thursday</option>
+                          <option value={5}>Friday</option>
+                          <option value={6}>Saturday</option>
+                        </select>
+                      )}
+                      {schedule === "monthly" && (
+                        <select
+                          className="tile-select"
+                          value={incomeEditor.payDate}
+                          onChange={(e) => setIncomeEditor({ ...incomeEditor, payDate: parseInt(e.target.value) })}
+                        >
+                          {Array.from({ length: 31 }, (_, i) => (
+                            <option key={i + 1} value={i + 1}>{i + 1}</option>
+                          ))}
+                        </select>
+                      )}
+                      <button className="pill-link" onClick={saveIncomeSchedule}>Save</button>
                     </>
                   )}
                   {incomeEditor.error && <div className="error-note">{incomeEditor.error}</div>}
@@ -455,13 +758,29 @@ export default function Budget({ user }) {
 
               {/* breakdown list (scrolls inside) */}
               <div className="tile-scroll">
-                {Object.entries(incomeBySource).map(([s, v], i) => (
-                  <div key={s} className="entry-row">
-                    <span className="legend-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
-                    <span className="legend-label">{s}</span>
-                    <strong>${fmt(v)}</strong>
-                  </div>
-                ))}
+                {Object.entries(incomeBySource).map(([s, v], i) => {
+                  const incomeItem = incomes.find((inc) => inc.source === s);
+                  const scheduleInfo = incomeItem
+                    ? (schedule === "weekly" || schedule === "fortnight")
+                      ? `Pays: ${getDayName(incomeItem.payDay ?? settings.defaultPayDay)}`
+                      : schedule === "monthly"
+                      ? `Pays: ${(incomeItem.payDate ?? settings.defaultPayDate)}${getOrdinalSuffix(incomeItem.payDate ?? settings.defaultPayDate)}`
+                      : "Yearly"
+                    : "";
+
+                  return (
+                    <div key={s} className="entry-row">
+                      <div className="income-item-details">
+                        <span className="legend-dot" style={{ background: PALETTE[i % PALETTE.length] }} />
+                        <div className="income-item-info">
+                          <span className="legend-label">{s}</span>
+                          {scheduleInfo && <div className="schedule-info">{scheduleInfo}</div>}
+                        </div>
+                      </div>
+                      <strong>${fmt(v)}</strong>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -509,7 +828,7 @@ export default function Budget({ user }) {
                         value={expenseEditor.category}
                         onChange={(e) => setExpenseEditor({ ...expenseEditor, category: e.target.value, error: "" })}
                       />
-                      <button className="pill-link" onClick={saveExpenseCategory}>Save</button>
+                      <button className="pill-link" onClick={saveExpenseCategory}>Next</button>
                     </>
                   )}
                   {expenseEditor.step === "amount" && (
@@ -532,10 +851,15 @@ export default function Budget({ user }) {
                 </div>
               )}
 
-              {/* breakdown list (scrolls inside) */}
+              {/* breakdown list (scrolls inside) with clickable tiles */}
               <div className="tile-scroll">
                 {Object.entries(spendByCategory).map(([c, v], i) => (
-                  <div key={c} className="entry-row">
+                  <div
+                    key={c}
+                    className="entry-row expense-tile-clickable"
+                    onClick={() => addToExpenseCategory(c)}
+                    title={`Click to add more to ${c}`}
+                  >
                     <span className="legend-dot" style={{ background: darken(PALETTE[i % PALETTE.length], 0.12) }} />
                     <span className="legend-label">{c}</span>
                     <strong>${fmt(v)}</strong>
@@ -546,6 +870,25 @@ export default function Budget({ user }) {
           </div>
         </>
       )}
+
+      {/* Wizard overlay */}
+      {user && setupReady && showWizard && (
+        <BudgetSetupWizard
+          saving={savingWizard}
+          onClose={() => setShowWizard(false)}
+          onComplete={handleWizardComplete}
+        />
+      )}
     </section>
   );
+}
+
+// Helper function for ordinal suffixes
+function getOrdinalSuffix(num) {
+  const j = num % 10,
+    k = num % 100;
+  if (j === 1 && k !== 11) return "st";
+  if (j === 2 && k !== 12) return "nd";
+  if (j === 3 && k !== 13) return "rd";
+  return "th";
 }
