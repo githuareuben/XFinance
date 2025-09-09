@@ -1,11 +1,243 @@
-.tg-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;}
-.tg-highlight{position:absolute;z-index:9999;border-radius:12px;outline:2px solid #8A2BE2;box-shadow:0 0 0 6px rgba(138,43,226,.25);pointer-events:none;transition:top .15s,left .15s,width .15s,height .15s;}
-.tg-box{position:absolute;z-index:10000;width:min(92vw,320px);background:#fff;color:#111;border:1px solid rgba(0,0,0,.08);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.25);padding:14px 14px 12px;transition:opacity .15s;}
-.tg-title{font-weight:800;margin-bottom:6px;}
-.tg-body{opacity:.9;line-height:1.35;}
-.tg-actions{display:flex;align-items:center;margin-top:10px;gap:10px;}
-.tg-spacer{flex:1;}
-.tg-skip,.tg-next{border:0;border-radius:999px;padding:8px 12px;font-weight:800;cursor:pointer;}
-.tg-skip{background:#f3f4f6;}
-.tg-next{background:#8A2BE2;color:#fff;}
-.tg-next:hover{filter:brightness(1.05);}
+/* ===========================================================================
+   TourGuide.css
+   Spotlight-style in-app tour overlay.
+   - Dims everything except the currently highlighted target
+   - Keeps the highlighted element bright & interactive
+   - Locks background scrolling while the tour is open
+   - Works with Lottie/SVG/img/video inside buttons
+   ========================================================================== */
+
+/* Backdrop layer (click-catcher + global dim). Target element is elevated above this. */
+.tg-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35); /* overall dim of the app */
+  z-index: 9998;
+  transition: opacity 0.3s ease;
+}
+
+/* When tour is open, strip any app-wide blur/glass so dimming is consistent */
+.tg-open * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* The “hole” mask around the target (spotlight). Place ABOVE backdrop. */
+.tg-spotlight {
+  position: fixed;
+  z-index: 10000;
+  background: transparent;
+  border-radius: 16px;
+  pointer-events: none;
+  /* Giant outer shadow creates the mask; inner strokes add a glow ring */
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 4px rgba(138, 43, 226, 0.95),
+    inset 0 0 24px rgba(138, 43, 226, 0.5);
+  transition: top .18s ease, left .18s ease, width .18s ease, height .18s ease, border-radius .18s ease;
+  animation: tgSpotlightPulse 2s ease-in-out infinite;
+}
+
+@keyframes tgSpotlightPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 9999px rgba(0, 0, 0, 0.35),
+      inset 0 0 0 4px rgba(138, 43, 226, 0.95),
+      inset 0 0 24px rgba(138, 43, 226, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 9999px rgba(0, 0, 0, 0.35),
+      inset 0 0 0 6px rgba(138, 43, 226, 1),
+      inset 0 0 36px rgba(138, 43, 226, 0.65);
+  }
+}
+
+/* The currently highlighted DOM node is elevated ABOVE the dim + spotlight,
+   so it stays fully bright and clickable. */
+.tg-elevate {
+  position: relative !important;
+  z-index: 10001 !important;     /* above .tg-spotlight (10000) and .tg-backdrop (9998) */
+  isolation: isolate !important;
+
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  filter: none !important;
+
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+
+  /* small emphasis */
+  transform: scale(1.05) !important;
+  transition: transform .18s ease !important;
+
+  /* “brighten” hint (works on most elements) */
+  filter: brightness(1.1) contrast(1.06) !important;
+}
+
+/* Make sure children aren’t dimmed by app styles */
+.tg-elevate *,
+.tg-elevate *::before,
+.tg-elevate *::after {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: auto !important;
+}
+
+/* Your glassy circle nav buttons: keep them bright during tour */
+.tg-elevate.circle-btn {
+  background: var(--btn-bg, rgba(255,255,255,0.16)) !important;
+  border: 1px solid var(--btn-border, rgba(255,255,255,0.28)) !important;
+  box-shadow: var(--shadow, 0 10px 28px rgba(0,0,0,0.35)) !important;
+  color: #8A2BE2 !important;
+  filter: brightness(1.2) contrast(1.1) !important;
+}
+
+/* Common media types inside the elevated element (Lottie, SVG, etc.) */
+.tg-elevate svg,
+.tg-elevate canvas,
+.tg-elevate img,
+.tg-elevate video,
+.tg-elevate .lottie-icon,
+.tg-elevate [class*="lottie"],
+.tg-elevate > div {
+  opacity: 1 !important;
+  visibility: visible !important;
+  filter: brightness(1.15) contrast(1.08) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: auto !important;
+}
+
+/* Optional: keep your topbar crisp (no blur) while tour is open */
+.tg-open .topbar {
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Optional: also keep the whole nav row bright */
+.tg-open .topbar-center,
+.tg-open .topbar-center *,
+.tg-open .circle-btn,
+.tg-open .circle-btn * {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* =========================
+   Tooltip / callout box
+   ========================= */
+.tg-box {
+  position: absolute;
+  z-index: 10002;               /* above spotlight + elevated target */
+  width: min(92vw, 340px);
+  background: #fff;
+  color: #111;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.30);
+  padding: 16px;
+  transition: opacity .15s ease, transform .15s ease;
+  animation: tgBoxIn .28s ease-out;
+}
+
+@keyframes tgBoxIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.tg-title { 
+  font-weight: 800; 
+  margin-bottom: 8px; 
+  font-size: 16px;
+  color: #111;
+}
+.tg-body { 
+  opacity: 0.9; 
+  line-height: 1.45; 
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.tg-actions { 
+  display: flex; 
+  align-items: center; 
+  margin-top: 12px; 
+  gap: 12px; 
+}
+.tg-spacer { flex: 1; }
+
+.tg-skip, .tg-next {
+  border: 0; 
+  border-radius: 9px; 
+  padding: 10px 16px; 
+  font-weight: 700; 
+  cursor: pointer;
+  font-size: 14px;
+  transition: all .2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tg-skip { 
+  background: #f3f4f6; 
+  color: #6b7280;
+}
+.tg-skip:hover { background: #e5e7eb; transform: translateY(-1px); }
+
+.tg-next { 
+  background: #8A2BE2; 
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(138,43,226,0.30);
+}
+.tg-next:hover { 
+  background: #7C2ED6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(138,43,226,0.40);
+}
+.tg-next:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 2px 8px rgba(138,43,226,0.20);
+}
+
+/* Progress */
+.tg-progress {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+}
+.tg-step-counter {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+  text-align: center;
+  font-weight: 600;
+}
+.tg-progress-bar {
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tg-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8A2BE2, #A855F7);
+  border-radius: 2px;
+  transition: width .3s ease;
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px) {
+  .tg-box { width: min(95vw, 320px); padding: 14px; margin: 0 8px; }
+  .tg-title { font-size: 15px; }
+  .tg-body { font-size: 13px; }
+  .tg-skip, .tg-next { padding: 8px 12px; font-size: 13px; }
+}

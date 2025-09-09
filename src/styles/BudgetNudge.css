@@ -1,0 +1,519 @@
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .budget-nudge-bubble {
+    min-width: 250px;
+    max-width: calc(100vw - 32px);
+    padding: 12px 14px;
+  }
+  
+  .budget-nudge-text {
+    font-size: 14px;
+  }
+  
+  .budget-nudge-dismiss {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
+
+/* ================================
+   MODAL-STYLE BUDGET NUDGE
+   ================================ */
+
+/* Full-screen backdrop for modal */
+.budget-nudge-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 15000;
+  animation: modalBackdropFadeIn 0.3s ease-out;
+}
+
+/* Modal container */
+.budget-nudge-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 15001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modalSlideIn 0.4s ease-out;
+}
+
+/* Modal content */
+.budget-nudge-modal-content {
+  background: linear-gradient(135deg, #8A2BE2 0%, #A855F7 100%);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.4),
+    0 0 60px rgba(138, 43, 226, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated background effect */
+.budget-nudge-modal-content::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  animation: modalShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Modal icon */
+.budget-nudge-modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: modalIconBounce 1s ease-out;
+}
+
+/* Modal title */
+.budget-nudge-modal-title {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1.2;
+}
+
+/* Modal text */
+.budget-nudge-modal-text {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Modal actions container */
+.budget-nudge-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Modal buttons */
+.budget-nudge-modal-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Secondary button (Stay on Home) */
+.budget-nudge-modal-btn--secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+.budget-nudge-modal-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Primary button (Continue to Budget) */
+.budget-nudge-modal-btn--primary {
+  background: #ffffff;
+  color: #8A2BE2;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.budget-nudge-modal-btn--primary:hover {
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.budget-nudge-modal-btn--primary:active {
+  transform: translateY(0);
+}
+
+/* Button ripple effect */
+.budget-nudge-modal-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  opacity: 0;
+  transform: scale(0);
+  transition: all 0.3s ease;
+}
+
+.budget-nudge-modal-btn:active::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Animations */
+@keyframes modalBackdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from { 
+    opacity: 0; 
+    transform: scale(0.8) translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1) translateY(0); 
+  }
+}
+
+@keyframes modalShimmer {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+@keyframes modalIconBounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
+}
+
+/* Mobile responsiveness for modal */
+@media (max-width: 768px) {
+  .budget-nudge-modal-content {
+    padding: 24px;
+    margin: 16px;
+    max-width: none;
+  }
+  
+  .budget-nudge-modal-title {
+    font-size: 20px;
+  }
+  
+  .budget-nudge-modal-text {
+    font-size: 14px;
+  }
+  
+  .budget-nudge-modal-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    min-width: 120px;
+  }
+  
+  .budget-nudge-modal-actions {
+    flex-direction: column;
+  }
+}
+  /* BudgetNudge.css
+   ---------------
+   Styles for the post-tour Budget nudge:
+   - Different intensity levels of pulsing highlights for the target element
+   - A compact tooltip bubble placed near the target encouraging a click
+   - Strong "buzz" effect for maximum attention
+*/
+
+/* ==== Target pulse highlight (applied directly to the target element) ==== */
+.budget-nudge-pulse {
+  position: relative;
+  border-radius: 10px;
+  transition: all .2s ease;
+  isolation: isolate;
+}
+
+/* Subtle intensity */
+.budget-nudge-pulse--subtle {
+  outline: 1px solid rgba(138, 43, 226, 0.6);
+}
+
+.budget-nudge-pulse--subtle::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.2);
+  animation: budgetPulseSubtle 2.5s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Normal intensity */
+.budget-nudge-pulse--normal {
+  outline: 2px solid rgba(138, 43, 226, 0.8);
+}
+
+.budget-nudge-pulse--normal::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.3);
+  animation: budgetPulseNormal 2s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Strong intensity with buzz effect */
+.budget-nudge-pulse--strong {
+  outline: 3px solid rgba(138, 43, 226, 0.95);
+  box-shadow: 0 0 20px rgba(138, 43, 226, 0.4);
+}
+
+.budget-nudge-pulse--strong::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 14px;
+  box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.4);
+  animation: budgetPulseStrong 1.5s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Buzz effect for strong intensity */
+.budget-nudge-buzz {
+  animation: budgetBuzz 0.6s ease-in-out infinite alternate;
+}
+
+/* Pulse animations */
+@keyframes budgetPulseSubtle {
+  0% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.2); }
+  70% { box-shadow: 0 0 0 8px rgba(138, 43, 226, 0.0); }
+  100% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.0); }
+}
+
+@keyframes budgetPulseNormal {
+  0% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.3); }
+  70% { box-shadow: 0 0 0 12px rgba(138, 43, 226, 0.0); }
+  100% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.0); }
+}
+
+@keyframes budgetPulseStrong {
+  0% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.4); }
+  70% { box-shadow: 0 0 0 16px rgba(138, 43, 226, 0.0); }
+  100% { box-shadow: 0 0 0 0 rgba(138, 43, 226, 0.0); }
+}
+
+@keyframes budgetBuzz {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-2px) rotate(-0.5deg); }
+  50% { transform: translateX(0); }
+  75% { transform: translateX(2px) rotate(0.5deg); }
+  100% { transform: translateX(0); }
+}
+
+/* ==== Bubble that appears near the target ==== */
+.budget-nudge-bubble {
+  position: absolute;
+  z-index: 10010;
+  min-width: 280px;
+  max-width: 360px;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+  line-height: 1.4;
+  transform: translateY(0);
+  animation: nudgePop .3s ease-out;
+  font-family: inherit;
+}
+
+/* Bubble intensity variants */
+.budget-nudge-bubble--subtle {
+  background: #f8fafc;
+  color: #1e293b;
+  border: 1px solid rgba(138, 43, 226, 0.2);
+}
+
+.budget-nudge-bubble--normal {
+  background: #1e293b;
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.budget-nudge-bubble--strong {
+  background: linear-gradient(135deg, #8A2BE2 0%, #A855F7 100%);
+  color: #ffffff;
+  border: 2px solid rgba(255,255,255,0.3);
+  box-shadow: 
+    0 20px 50px rgba(0,0,0,0.4),
+    0 0 30px rgba(138, 43, 226, 0.5);
+  animation: nudgePopStrong .4s ease-out, nudgeGlow 2s ease-in-out infinite alternate;
+}
+
+/* Pointer variants */
+.budget-nudge-bubble--subtle::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 20px;
+  border-width: 0 8px 8px 8px;
+  border-style: solid;
+  border-color: transparent transparent #f8fafc transparent;
+  filter: drop-shadow(0 -2px 2px rgba(138, 43, 226, 0.1));
+}
+
+.budget-nudge-bubble--normal::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 20px;
+  border-width: 0 8px 8px 8px;
+  border-style: solid;
+  border-color: transparent transparent #1e293b transparent;
+  filter: drop-shadow(0 -1px 0 rgba(255,255,255,0.15));
+}
+
+.budget-nudge-bubble--strong::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 20px;
+  border-width: 0 9px 9px 9px;
+  border-style: solid;
+  border-color: transparent transparent #8A2BE2 transparent;
+  filter: drop-shadow(0 -2px 4px rgba(0,0,0,0.3));
+}
+
+/* Content styling */
+.budget-nudge-text {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.budget-nudge-bubble--strong .budget-nudge-text {
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.budget-nudge-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.budget-nudge-dismiss {
+  appearance: none;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Dismiss button variants */
+.budget-nudge-bubble--subtle .budget-nudge-dismiss {
+  background: rgba(138, 43, 226, 0.1);
+  color: #8A2BE2;
+}
+
+.budget-nudge-bubble--subtle .budget-nudge-dismiss:hover {
+  background: rgba(138, 43, 226, 0.2);
+  transform: translateY(-1px);
+}
+
+.budget-nudge-bubble--normal .budget-nudge-dismiss {
+  background: #374151;
+  color: #d1d5db;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.budget-nudge-bubble--normal .budget-nudge-dismiss:hover {
+  background: #4b5563;
+  transform: translateY(-1px);
+}
+
+.budget-nudge-bubble--strong .budget-nudge-dismiss {
+  background: rgba(255,255,255,0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.3);
+  backdrop-filter: blur(10px);
+}
+
+.budget-nudge-bubble--strong .budget-nudge-dismiss:hover {
+  background: rgba(255,255,255,0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Animations */
+@keyframes nudgePop {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px) scale(0.95); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+@keyframes nudgePopStrong {
+  0% { 
+    opacity: 0; 
+    transform: translateY(12px) scale(0.9); 
+  }
+  70% { 
+    opacity: 1; 
+    transform: translateY(-2px) scale(1.02); 
+  }
+  100% { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+@keyframes nudgeGlow {
+  0% { 
+    box-shadow: 
+      0 20px 50px rgba(0,0,0,0.4),
+      0 0 30px rgba(138, 43, 226, 0.5);
+  }
+  100% { 
+    box-shadow: 
+      0 25px 60px rgba(0,0,0,0.5),
+      0 0 40px rgba(138, 43, 226, 0.7);
+  }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .budget-nudge-bubble {
+    min-width: 250px;
+    max-width: calc(100vw - 32px);
+    padding: 12px 14px;
+  }
+  
+  .budget-nudge-text {
+    font-size: 14px;
+  }
+  
+  .budget-nudge-dismiss {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}
